@@ -1,0 +1,6 @@
+{
+  "name": "SERES - Centro de Masajes y Terapias Integrativas",
+  "description": "Aplicación web oficial de SERES para el seguimiento de sesiones, paquetes, espacio personal de reflexión, biblioteca de autocuidado y guía diaria de bienestar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
