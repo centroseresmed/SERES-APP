@@ -11,9 +11,10 @@ import { Footer } from './components/Footer';
 import { BreathingPacerModal } from './components/BreathingPacerModal';
 import { SupabaseGuideModal } from './components/SupabaseGuideModal';
 import { AuthModal } from './components/AuthModal';
+import { EditProfileModal } from './components/EditProfileModal';
 import { dataService } from './services/dataService';
 import { UserProfile, Package, SessionRecord, PersonalNote, SelfCareResource } from './types';
-import { Eye, EyeOff, X } from 'lucide-react';
+import { EyeOff } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(dataService.getCurrentUser());
@@ -21,8 +22,9 @@ export default function App() {
   const [isBreathingPacerOpen, setIsBreathingPacerOpen] = useState<boolean>(false);
   const [isSupabaseGuideOpen, setIsSupabaseGuideOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState<boolean>(false);
   
-  // Control de la barra de prueba (oculta por defecto para que la app se vea lista y oficial)
+  // Barra de simulación opcional
   const [showTestingBar, setShowTestingBar] = useState<boolean>(() => {
     return localStorage.getItem('seres_show_test_bar') === 'true';
   });
@@ -86,11 +88,12 @@ export default function App() {
         onOpenSupabaseGuide={() => setIsSupabaseGuideOpen(true)}
         onOpenBreathingPacer={() => setIsBreathingPacerOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenEditProfile={() => setIsEditProfileOpen(true)}
         showTestingBar={showTestingBar}
         onToggleTestingBar={handleToggleTestingBar}
       />
 
-      {/* Barra de simulación opcional (oculta por defecto para vista de producción limpia) */}
+      {/* Barra de simulación opcional */}
       {showTestingBar && (
         <div className="bg-[#D7C8A5]/30 border-b border-[#D7C8A5]/50 py-1.5 px-4 text-xs animate-fade-in">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
@@ -216,6 +219,14 @@ export default function App() {
           setCurrentUser(dataService.getCurrentUser());
         }}
       />
+
+      {currentUser && (
+        <EditProfileModal
+          isOpen={isEditProfileOpen}
+          onClose={() => setIsEditProfileOpen(false)}
+          currentUser={currentUser}
+        />
+      )}
 
       {/* Footer */}
       <Footer

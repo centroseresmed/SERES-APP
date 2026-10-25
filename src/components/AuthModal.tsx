@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle, Shield } from 'lucide-react';
 import { dataService } from '../services/dataService';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 
@@ -19,6 +19,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   if (!isOpen) return null;
 
+  const handleAdminDirectLogin = () => {
+    dataService.loginAsAdmin();
+    setMessage({ type: 'success', text: '¡Bienvenida Administradora de SERES!' });
+    setTimeout(() => {
+      onSuccess();
+      onClose();
+    }, 600);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
@@ -26,7 +35,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
     try {
       if (isSupabaseConfigured && supabase) {
-        // En conexión real con Supabase
         if (isRegister) {
           const { error } = await supabase.auth.signUp({
             email,
@@ -53,8 +61,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           }, 800);
         }
       } else {
-        // En modo local
-        const result = await dataService.loginWithEmail(email);
+        const result = await dataService.loginWithEmail(email, fullName);
         if (result.success) {
           setMessage({ type: 'success', text: 'Sesión iniciada correctamente.' });
           setTimeout(() => {
@@ -90,10 +97,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             SERES
           </span>
           <h3 className="text-lg font-bold text-[#503250] mt-1">
-            {isRegister ? 'Crear cuenta de cliente' : 'Acceso a tu espacio SERES'}
+            {isRegister ? 'Crear cuenta en SERES' : 'Acceso a tu espacio'}
           </h3>
           <p className="text-xs text-[#1E1E1E]/70 mt-1">
-            Consulta tus bonos, sesiones asistidas y tu espacio de autocuidado
+            Espacio de seguimiento de sesiones y autocuidado
           </p>
         </div>
 
@@ -107,6 +114,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <span>{message.text}</span>
           </div>
         )}
+
+        {/* Acceso rápido garantizado para la dueña/administradora de SERES */}
+        <div className="mb-5 p-3.5 rounded-2xl bg-[#503250]/10 border border-[#503250]/20 text-center">
+          <span className="text-[11px] text-[#503250] font-medium block mb-2">
+            ¿Eres la administradora de SERES?
+          </span>
+          <button
+            type="button"
+            onClick={handleAdminDirectLogin}
+            className="w-full py-2.5 px-3 rounded-xl bg-[#503250] text-[#F5F0E6] text-xs font-semibold hover:bg-[#3d263d] transition-all flex items-center justify-center gap-2 shadow-xs"
+          >
+            <Shield className="w-3.5 h-3.5 text-[#D7C8A5]" />
+            <span>Entrar como Administradora (centroseresmed@gmail.com)</span>
+          </button>
+        </div>
+
+        <div className="relative flex py-2 items-center mb-3">
+          <div className="flex-grow border-t border-[#503250]/15"></div>
+          <span className="flex-shrink mx-3 text-[11px] text-[#1E1E1E]/50">o ingresa con tu correo</span>
+          <div className="flex-grow border-t border-[#503250]/15"></div>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {isRegister && (
@@ -160,18 +188,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-2xl bg-[#503250] hover:bg-[#3d263d] text-[#F5F0E6] text-xs font-semibold transition-all shadow-md shadow-[#503250]/15 flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+            className="w-full py-3 rounded-2xl bg-[#BE6E55] hover:bg-[#a85f48] text-white text-xs font-semibold transition-all shadow-md shadow-[#BE6E55]/15 flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
           >
             <span>{loading ? 'Procesando...' : isRegister ? 'Registrarme' : 'Entrar a mi espacio'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </form>
 
-        <div className="mt-5 pt-4 border-t border-[#503250]/10 text-center">
+        <div className="mt-4 pt-3 border-t border-[#503250]/10 text-center">
           <button
             type="button"
             onClick={() => { setIsRegister(!isRegister); setMessage(null); }}
-            className="text-xs text-[#BE6E55] hover:underline font-medium"
+            className="text-xs text-[#503250] hover:underline font-medium"
           >
             {isRegister
               ? '¿Ya tienes una cuenta? Inicia sesión aquí'

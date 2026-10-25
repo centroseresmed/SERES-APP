@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Database, LogOut, ChevronDown, Sparkles, Share2, Check, User } from 'lucide-react';
+import { Database, LogOut, ChevronDown, Sparkles, Share2, Check, User, Edit2 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { dataService } from '../services/dataService';
 import { isSupabaseConfigured } from '../lib/supabase';
@@ -11,6 +11,7 @@ interface HeaderProps {
   onOpenSupabaseGuide: () => void;
   onOpenBreathingPacer: () => void;
   onOpenAuthModal: () => void;
+  onOpenEditProfile: () => void;
   showTestingBar: boolean;
   onToggleTestingBar: () => void;
 }
@@ -22,15 +23,14 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSupabaseGuide,
   onOpenBreathingPacer,
   onOpenAuthModal,
+  onOpenEditProfile,
   showTestingBar,
   onToggleTestingBar,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const users = dataService.getUsers();
 
   const handleShare = () => {
-    // URL pública para compartir
     const shareUrl = window.location.href;
     navigator.clipboard.writeText(shareUrl);
     setCopiedLink(true);
@@ -137,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </button>
 
-            {/* User switcher & profile menu */}
+            {/* User profile menu */}
             {currentUser ? (
               <div className="relative">
                 <button
@@ -150,8 +150,8 @@ export const Header: React.FC<HeaderProps> = ({
                     {currentUser.fullName.charAt(0) || 'U'}
                   </div>
                   <div className="hidden sm:block text-left">
-                    <div className="text-xs font-semibold text-[#1E1E1E] leading-tight truncate max-w-[100px]">
-                      {currentUser.fullName.split(' ')[0]}
+                    <div className="text-xs font-semibold text-[#1E1E1E] leading-tight truncate max-w-[110px]">
+                      {currentUser.fullName}
                     </div>
                     <div className="text-[10px] text-[#503250]/70 font-medium leading-none">
                       {currentUser.role === 'admin' ? 'Administradora' : 'Cliente'}
@@ -167,21 +167,32 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <div className="px-3 py-2 border-b border-[#503250]/10 mb-1">
                       <span className="text-[10px] font-semibold text-[#A06446] uppercase tracking-wider block">
-                        Cuenta activa en SERES
+                        Cuenta Activa
                       </span>
-                      <p className="text-xs font-semibold text-[#503250] mt-0.5">{currentUser.fullName}</p>
-                      <p className="text-[11px] text-[#1E1E1E]/60">{currentUser.email}</p>
+                      <p className="text-xs font-bold text-[#503250] mt-0.5">{currentUser.fullName}</p>
+                      <p className="text-[11px] text-[#1E1E1E]/60 truncate">{currentUser.email}</p>
                     </div>
 
-                    <div className="px-3 py-1.5">
+                    <div className="px-1 py-1 space-y-1">
+                      <button
+                        onClick={() => {
+                          onOpenEditProfile();
+                          setShowUserDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-[#503250] hover:bg-white flex items-center gap-2 transition-colors font-medium text-xs"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-[#BE6E55]" />
+                        <span>Cambiar mi nombre / Editar perfil</span>
+                      </button>
+
                       <button
                         onClick={() => {
                           onToggleTestingBar();
                           setShowUserDropdown(false);
                         }}
-                        className="w-full text-left py-1 text-xs text-[#503250] hover:underline font-medium"
+                        className="w-full text-left px-3 py-1.5 rounded-xl text-[#1E1E1E]/70 hover:bg-white flex items-center gap-2 transition-colors text-xs"
                       >
-                        {showTestingBar ? '👁️ Ocultar barra de prueba' : '🔧 Mostrar barra de prueba'}
+                        <span>{showTestingBar ? '👁️ Ocultar barra de prueba' : '🔧 Mostrar barra de prueba'}</span>
                       </button>
                     </div>
 

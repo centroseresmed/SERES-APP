@@ -21,18 +21,17 @@ import {
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const STORAGE_KEYS = {
-  CURRENT_USER: 'seres_current_user_v1',
-  USERS: 'seres_users_v1',
-  PACKAGES: 'seres_packages_v1',
-  MOVEMENTS: 'seres_movements_v1',
-  SESSIONS: 'seres_sessions_v1',
-  PERSONAL_NOTES: 'seres_personal_notes_v1',
-  RESOURCES: 'seres_resources_v1',
-  SERVICES: 'seres_services_v1',
-  REFERRALS: 'seres_referrals_v1',
+  CURRENT_USER: 'seres_current_user_v2',
+  USERS: 'seres_users_v2',
+  PACKAGES: 'seres_packages_v2',
+  MOVEMENTS: 'seres_movements_v2',
+  SESSIONS: 'seres_sessions_v2',
+  PERSONAL_NOTES: 'seres_personal_notes_v2',
+  RESOURCES: 'seres_resources_v2',
+  SERVICES: 'seres_services_v2',
+  REFERRALS: 'seres_referrals_v2',
 };
 
-// Helper for local storage retrieval with default fallback
 function getLocalItem<T>(key: string, defaultValue: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -72,7 +71,6 @@ class DataService {
   }
 
   private initializeData(): void {
-    // If local storage is empty, populate with seed data
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
       setLocalItem(STORAGE_KEYS.USERS, INITIAL_USERS);
     }
@@ -98,20 +96,38 @@ class DataService {
       setLocalItem(STORAGE_KEYS.REFERRALS, INITIAL_REFERRALS);
     }
 
-    // Set initial user if none exists
     const storedUser = getLocalItem<UserProfile | null>(STORAGE_KEYS.CURRENT_USER, null);
     if (storedUser) {
       this.currentUser = storedUser;
     } else {
-      // Default to Ana María (client) for initial test
+      // Default to official SERES Admin
       this.currentUser = INITIAL_USERS[0];
       setLocalItem(STORAGE_KEYS.CURRENT_USER, this.currentUser);
     }
   }
 
-  // --- AUTH & USER CONTEXT ---
+  // --- AUTH & USER PROFILE ---
   public getCurrentUser(): UserProfile | null {
     return this.currentUser;
+  }
+
+  public updateUserProfile(updates: { fullName?: string; phone?: string }): { success: boolean } {
+    if (!this.currentUser) return { success: false };
+
+    const allUsers = this.getUsers();
+    const idx = allUsers.findIndex(u => u.id === this.currentUser!.id);
+    if (idx !== -1) {
+      allUsers[idx] = {
+        ...allUsers[idx],
+        ...updates,
+      };
+      this.currentUser = allUsers[idx];
+      setLocalItem(STORAGE_KEYS.USERS, allUsers);
+      setLocalItem(STORAGE_KEYS.CURRENT_USER, this.currentUser);
+      this.notify();
+      return { success: true };
+    }
+    return { success: false };
   }
 
   public switchUser(userId: string): void {
@@ -124,9 +140,28 @@ class DataService {
     }
   }
 
-  public async loginWithEmail(email: string): Promise<{ success: boolean; message?: string }> {
+  public loginAsAdmin(): void {
+    const allUsers = this.getUsers();
+    let admin = allUsers.find(u => u.role === 'admin' || u.email.toLowerCase() === 'centroseresmed@gmail.com');
+    if (!admin) {
+      admin = {
+        id: 'user-admin-seres',
+        email: 'centroseresmed@gmail.com',
+        fullName: 'Administradora SERES',
+        phone: '',
+        role: 'admin',
+        createdAt: new Date().toISOString(),
+      };
+      allUsers.push(admin);
+      setLocalItem(STORAGE_KEYS.USERS, allUsers);
+    }
+    this.currentUser = admin;
+    setLocalItem(STORAGE_KEYS.CURRENT_USER, admin);
+    this.notify();
+  }
+
+  public async loginWithEmail(email: string, fullName?: string): Promise<{ success: boolean; message?: string }> {
     if (isSupabaseConfigured && supabase) {
-      // Supabase Auth call if configured
       try {
         const { error } = await supabase.auth.signInWithOtp({ email });
         if (error) throw error;
@@ -136,21 +171,23 @@ class DataService {
       }
     }
 
-    // Local simulated auth
     const allUsers = this.getUsers();
-    const found = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const cleanEmail = email.trim().toLowerCase();
+    const found = allUsers.find(u => u.email.toLowerCase() === cleanEmail);
+
     if (found) {
       this.currentUser = found;
       setLocalItem(STORAGE_KEYS.CURRENT_USER, found);
       this.notify();
       return { success: true };
     } else {
-      // Create a new client account
+      // Si el correo es de centroseresmed@gmail.com entra como admin
+      const isAdminEmail = cleanEmail === 'centroseresmed@gmail.com' || cleanEmail.includes('seres');
       const newUser: UserProfile = {
         id: `user-${Date.now()}`,
-        email,
-        fullName: email.split('@')[0],
-        role: 'client',
+        email: cleanEmail,
+        fullName: fullName || cleanEmail.split('@')[0],
+        role: isAdminEmail ? 'admin' : 'client',
         createdAt: new Date().toISOString(),
       };
       allUsers.push(newUser);
@@ -175,12 +212,11 @@ class DataService {
     return getLocalItem<UserProfile[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
   }
 
-  // --- PACKAGES & SESSIONS WITH RLS ENFORCEMENT ---
+  // --- PACKAGES & SESSIONS ---
   public getPackages(): Package[] {
     const allPackages = getLocalItem<Package[]>(STORAGE_KEYS.PACKAGES, INITIAL_PACKAGES);
     if (!this.currentUser) return [];
 
-    // RLS: Client can ONLY see their own packages; Admin can see all packages
     if (this.currentUser.role === 'admin') {
       return allPackages;
     }
@@ -205,7 +241,6 @@ class DataService {
     const allSessions = getLocalItem<SessionRecord[]>(STORAGE_KEYS.SESSIONS, INITIAL_SESSIONS);
     if (!this.currentUser) return [];
 
-    // RLS: Client can ONLY see their own sessions; Admin sees all sessions
     if (this.currentUser.role === 'admin') {
       return allSessions.sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
     }
@@ -214,7 +249,7 @@ class DataService {
       .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
   }
 
-  // --- ADMIN ACTIONS FOR SESSIONS & ATTENDANCES ---
+  // --- ADMIN ACTIONS ---
   public recordSessionAttendance(params: {
     clientId: string;
     therapistName: string;
@@ -249,7 +284,6 @@ class DataService {
         return { success: false, error: 'Este paquete ya no tiene sesiones disponibles.' };
       }
 
-      // Deduct 1 session safely
       assignedPackage.sessionsUsed += 1;
       if (assignedPackage.sessionsUsed >= assignedPackage.totalSessions) {
         assignedPackage.status = 'completed';
@@ -257,7 +291,6 @@ class DataService {
       assignedPackage.updatedAt = new Date().toISOString();
       sessionNumberInPackage = assignedPackage.sessionsUsed;
 
-      // Create verifiable immutable movement record
       const movement: PackageMovement = {
         id: `mov-${Date.now()}`,
         packageId: assignedPackage.id,
@@ -270,7 +303,6 @@ class DataService {
       allMovements.push(movement);
     }
 
-    // Create session record
     const newSession: SessionRecord = {
       id: `ses-${Date.now()}`,
       clientId: params.clientId,
@@ -282,13 +314,12 @@ class DataService {
       sessionDate: params.sessionDate,
       status: 'confirmed',
       sessionNumberInPackage,
-      administrativeNotes: params.administrativeNotes || 'Asistencia presencial registrada por terapeuta.',
+      administrativeNotes: params.administrativeNotes || 'Asistencia presencial registrada en recepción.',
       createdAt: new Date().toISOString(),
     };
 
     allSessions.unshift(newSession);
 
-    // Save state
     setLocalItem(STORAGE_KEYS.PACKAGES, allPackages);
     setLocalItem(STORAGE_KEYS.MOVEMENTS, allMovements);
     setLocalItem(STORAGE_KEYS.SESSIONS, allSessions);
@@ -297,7 +328,6 @@ class DataService {
     return { success: true, session: newSession };
   }
 
-  // Administrative correction for attendance if registered by error
   public correctSessionAttendance(sessionId: string, reason: string): { success: boolean; error?: string } {
     if (!this.currentUser || this.currentUser.role !== 'admin') {
       return { success: false, error: 'Acceso denegado.' };
@@ -316,7 +346,6 @@ class DataService {
     session.status = 'cancelled';
     session.administrativeNotes = `${session.administrativeNotes || ''} [CORRECCIÓN ADMINISTRATIVA: ${reason}]`;
 
-    // If linked to a package, revert the consumed session
     if (session.packageId) {
       const allPackages = getLocalItem<Package[]>(STORAGE_KEYS.PACKAGES, INITIAL_PACKAGES);
       const pkg = allPackages.find(p => p.id === session.packageId);
@@ -332,7 +361,7 @@ class DataService {
           id: `mov-${Date.now()}`,
           packageId: pkg.id,
           clientId: session.clientId,
-          changeAmount: 1, // Restore 1 session
+          changeAmount: 1,
           reason: `Corrección autorizada: ${reason}`,
           recordedByName: this.currentUser.fullName,
           createdAt: new Date().toISOString(),
@@ -348,7 +377,6 @@ class DataService {
     return { success: true };
   }
 
-  // Admin creates package for a client
   public createPackage(params: {
     clientId: string;
     name: string;
@@ -390,13 +418,10 @@ class DataService {
     return { success: true, package: newPkg };
   }
 
-  // --- PERSONAL NOTES (STRICT PRIVACY - CLIENT ONLY) ---
+  // --- PERSONAL NOTES (CLIENT ONLY) ---
   public getPersonalNotes(): PersonalNote[] {
     if (!this.currentUser) return [];
 
-    // CRITICAL SECURITY ENFORCEMENT:
-    // If the user is an admin, they CANNOT view personal notes of clients.
-    // They only see their own notes (if any).
     const allNotes = getLocalItem<PersonalNote[]>(STORAGE_KEYS.PERSONAL_NOTES, INITIAL_PERSONAL_NOTES);
     return allNotes
       .filter(n => n.clientId === this.currentUser!.id)
@@ -420,10 +445,9 @@ class DataService {
     const now = new Date().toISOString();
 
     if (note.id) {
-      // Edit existing note
       const index = allNotes.findIndex(n => n.id === note.id && n.clientId === this.currentUser!.id);
       if (index === -1) {
-        return { success: false, error: 'Nota no encontrada o no tienes permisos para modificarla.' };
+        return { success: false, error: 'Nota no encontrada o sin permisos.' };
       }
       allNotes[index] = {
         ...allNotes[index],
@@ -439,7 +463,6 @@ class DataService {
       this.notify();
       return { success: true, note: allNotes[index] };
     } else {
-      // Create new note
       const newNote: PersonalNote = {
         id: `note-${Date.now()}`,
         clientId: this.currentUser.id,
@@ -469,133 +492,15 @@ class DataService {
     return { success: true };
   }
 
-  // --- SELF CARE RESOURCES ---
+  // --- SELF CARE RESOURCES & SERVICES ---
   public getSelfCareResources(): SelfCareResource[] {
     const all = getLocalItem<SelfCareResource[]>(STORAGE_KEYS.RESOURCES, INITIAL_SELF_CARE_RESOURCES);
-    if (this.currentUser?.role === 'admin') {
-      return all;
-    }
     return all.filter(r => r.isPublished);
   }
 
-  public saveSelfCareResource(resource: Partial<SelfCareResource>): { success: boolean; error?: string } {
-    if (!this.currentUser || this.currentUser.role !== 'admin') {
-      return { success: false, error: 'Solo la administración puede gestionar recursos de autocuidado.' };
-    }
-
-    const all = getLocalItem<SelfCareResource[]>(STORAGE_KEYS.RESOURCES, INITIAL_SELF_CARE_RESOURCES);
-    if (resource.id) {
-      const idx = all.findIndex(r => r.id === resource.id);
-      if (idx !== -1) {
-        all[idx] = { ...all[idx], ...resource } as SelfCareResource;
-      }
-    } else {
-      const newRes: SelfCareResource = {
-        id: `res-${Date.now()}`,
-        title: resource.title || 'Práctica de autocuidado',
-        slug: (resource.title || 'practica').toLowerCase().replace(/\s+/g, '-'),
-        category: resource.category || 'body_connection',
-        categoryLabel: resource.categoryLabel || 'Conexión corporal',
-        description: resource.description || '',
-        practicalGoal: resource.practicalGoal || '',
-        approxDurationMinutes: resource.approxDurationMinutes || 5,
-        stepByStepInstructions: resource.stepByStepInstructions || [],
-        precautions: resource.precautions,
-        tags: resource.tags || [],
-        imageUrl: resource.imageUrl,
-        audioUrl: resource.audioUrl,
-        integrationQuestion: resource.integrationQuestion,
-        isPublished: resource.isPublished ?? true,
-      };
-      all.unshift(newRes);
-    }
-    setLocalItem(STORAGE_KEYS.RESOURCES, all);
-    this.notify();
-    return { success: true };
-  }
-
-  // --- SERVICES AND GATHERINGS ---
   public getServicesAndGatherings(): ServiceOrGathering[] {
     const all = getLocalItem<ServiceOrGathering[]>(STORAGE_KEYS.SERVICES, INITIAL_SERVICES);
-    if (this.currentUser?.role === 'admin') {
-      return all;
-    }
     return all.filter(s => s.isPublished);
-  }
-
-  public saveServiceOrGathering(item: Partial<ServiceOrGathering>): { success: boolean; error?: string } {
-    if (!this.currentUser || this.currentUser.role !== 'admin') {
-      return { success: false, error: 'Solo la administración puede gestionar servicios y encuentros.' };
-    }
-
-    const all = getLocalItem<ServiceOrGathering[]>(STORAGE_KEYS.SERVICES, INITIAL_SERVICES);
-    if (item.id) {
-      const idx = all.findIndex(s => s.id === item.id);
-      if (idx !== -1) {
-        all[idx] = { ...all[idx], ...item } as ServiceOrGathering;
-      }
-    } else {
-      const newItem: ServiceOrGathering = {
-        id: `srv-${Date.now()}`,
-        title: item.title || 'Nuevo servicio',
-        itemType: item.itemType || 'service',
-        description: item.description || '',
-        durationText: item.durationText,
-        priceText: item.priceText,
-        scheduledAt: item.scheduledAt,
-        imageUrl: item.imageUrl,
-        contactActionUrl: item.contactActionUrl,
-        isPublished: item.isPublished ?? true,
-      };
-      all.unshift(newItem);
-    }
-    setLocalItem(STORAGE_KEYS.SERVICES, all);
-    this.notify();
-    return { success: true };
-  }
-
-  // --- REFERRALS (ARCHITECTURAL PREPARATION) ---
-  public getReferrals(): ReferralLead[] {
-    if (!this.currentUser) return [];
-    const all = getLocalItem<ReferralLead[]>(STORAGE_KEYS.REFERRALS, INITIAL_REFERRALS);
-    if (this.currentUser.role === 'admin') {
-      return all;
-    }
-    return all.filter(r => r.referrerClientId === this.currentUser!.id);
-  }
-
-  public registerReferral(referredName: string, referredContact?: string): { success: boolean; error?: string } {
-    if (!this.currentUser) return { success: false, error: 'Debes iniciar sesión.' };
-
-    const all = getLocalItem<ReferralLead[]>(STORAGE_KEYS.REFERRALS, INITIAL_REFERRALS);
-    const newRef: ReferralLead = {
-      id: `ref-${Date.now()}`,
-      referrerClientId: this.currentUser.id,
-      referredName,
-      referredContact,
-      status: 'registered',
-      notes: 'Registrado por cliente. Pendiente de verificación presencial.',
-      createdAt: new Date().toISOString(),
-    };
-    all.unshift(newRef);
-    setLocalItem(STORAGE_KEYS.REFERRALS, all);
-    this.notify();
-    return { success: true };
-  }
-
-  // Reset to initial seed state
-  public resetToDefaultSeed(): void {
-    setLocalItem(STORAGE_KEYS.USERS, INITIAL_USERS);
-    setLocalItem(STORAGE_KEYS.PACKAGES, INITIAL_PACKAGES);
-    setLocalItem(STORAGE_KEYS.MOVEMENTS, INITIAL_PACKAGE_MOVEMENTS);
-    setLocalItem(STORAGE_KEYS.SESSIONS, INITIAL_SESSIONS);
-    setLocalItem(STORAGE_KEYS.PERSONAL_NOTES, INITIAL_PERSONAL_NOTES);
-    setLocalItem(STORAGE_KEYS.RESOURCES, INITIAL_SELF_CARE_RESOURCES);
-    setLocalItem(STORAGE_KEYS.SERVICES, INITIAL_SERVICES);
-    setLocalItem(STORAGE_KEYS.REFERRALS, INITIAL_REFERRALS);
-    this.currentUser = INITIAL_USERS[0];
-    setLocalItem(STORAGE_KEYS.CURRENT_USER, this.currentUser);
-    this.notify();
   }
 }
 
