@@ -20,16 +20,17 @@ import {
 } from './seedData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+// Versión v3 para limpiar sesiones automáticas previas
 const STORAGE_KEYS = {
-  CURRENT_USER: 'seres_current_user_v2',
-  USERS: 'seres_users_v2',
-  PACKAGES: 'seres_packages_v2',
-  MOVEMENTS: 'seres_movements_v2',
-  SESSIONS: 'seres_sessions_v2',
-  PERSONAL_NOTES: 'seres_personal_notes_v2',
-  RESOURCES: 'seres_resources_v2',
-  SERVICES: 'seres_services_v2',
-  REFERRALS: 'seres_referrals_v2',
+  CURRENT_USER: 'seres_current_user_v3',
+  USERS: 'seres_users_v3',
+  PACKAGES: 'seres_packages_v3',
+  MOVEMENTS: 'seres_movements_v3',
+  SESSIONS: 'seres_sessions_v3',
+  PERSONAL_NOTES: 'seres_personal_notes_v3',
+  RESOURCES: 'seres_resources_v3',
+  SERVICES: 'seres_services_v3',
+  REFERRALS: 'seres_referrals_v3',
 };
 
 function getLocalItem<T>(key: string, defaultValue: T): T {
@@ -96,14 +97,10 @@ class DataService {
       setLocalItem(STORAGE_KEYS.REFERRALS, INITIAL_REFERRALS);
     }
 
+    // CRUCIAL: Un visitante nuevo que abre el link NO está autenticado (currentUser = null)
+    // Así nadie que entre ve la app como administradora por error.
     const storedUser = getLocalItem<UserProfile | null>(STORAGE_KEYS.CURRENT_USER, null);
-    if (storedUser) {
-      this.currentUser = storedUser;
-    } else {
-      // Default to official SERES Admin
-      this.currentUser = INITIAL_USERS[0];
-      setLocalItem(STORAGE_KEYS.CURRENT_USER, this.currentUser);
-    }
+    this.currentUser = storedUser;
   }
 
   // --- AUTH & USER PROFILE ---
@@ -165,7 +162,7 @@ class DataService {
       try {
         const { error } = await supabase.auth.signInWithOtp({ email });
         if (error) throw error;
-        return { success: true, message: 'Enlace mágico de acceso enviado a tu correo.' };
+        return { success: true, message: 'Enlace de acceso enviado a tu correo.' };
       } catch (err: any) {
         return { success: false, message: err?.message || 'Error al iniciar sesión con Supabase' };
       }
@@ -181,7 +178,6 @@ class DataService {
       this.notify();
       return { success: true };
     } else {
-      // Si el correo es de centroseresmed@gmail.com entra como admin
       const isAdminEmail = cleanEmail === 'centroseresmed@gmail.com' || cleanEmail.includes('seres');
       const newUser: UserProfile = {
         id: `user-${Date.now()}`,
@@ -314,7 +310,7 @@ class DataService {
       sessionDate: params.sessionDate,
       status: 'confirmed',
       sessionNumberInPackage,
-      administrativeNotes: params.administrativeNotes || 'Asistencia presencial registrada en recepción.',
+      administrativeNotes: params.administrativeNotes || 'Asistencia presencial registrada.',
       createdAt: new Date().toISOString(),
     };
 

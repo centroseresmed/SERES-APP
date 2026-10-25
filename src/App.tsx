@@ -24,7 +24,7 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState<boolean>(false);
   
-  // Barra de simulación opcional
+  // Barra de simulación opcional (oculta por defecto)
   const [showTestingBar, setShowTestingBar] = useState<boolean>(() => {
     return localStorage.getItem('seres_show_test_bar') === 'true';
   });
@@ -101,12 +101,22 @@ export default function App() {
               <span className="font-semibold text-[11px] uppercase tracking-wider">
                 Simulador de roles:
               </span>
-              <span className="font-bold">{currentUser?.fullName}</span>
-              <span className="text-[#1E1E1E]/60 text-[11px]">({currentUser?.role === 'admin' ? 'Administradora' : 'Cliente'})</span>
+              <span className="font-bold">{currentUser ? currentUser.fullName : 'Visitante Público'}</span>
+              <span className="text-[#1E1E1E]/60 text-[11px]">({currentUser?.role === 'admin' ? 'Administradora' : currentUser ? 'Cliente' : 'Sin iniciar sesión'})</span>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-[#A06446]">Cambiar vista:</span>
+              <button
+                onClick={() => dataService.logout()}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  !currentUser
+                    ? 'bg-[#503250] text-[#F5F0E6]'
+                    : 'bg-white/80 hover:bg-white text-[#503250] border border-[#D7C8A5]/60'
+                }`}
+              >
+                Visitante (Público)
+              </button>
               {allUsers.map((u) => (
                 <button
                   key={u.id}
@@ -146,6 +156,7 @@ export default function App() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onOpenBreathingPacer={() => setIsBreathingPacerOpen(true)}
+            onOpenAuthModal={() => setIsAuthModalOpen(true)}
           />
         )}
 

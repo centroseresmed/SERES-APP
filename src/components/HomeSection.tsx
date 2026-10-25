@@ -8,7 +8,7 @@ import {
   ArrowRight, 
   ShieldCheck, 
   Compass,
-  CheckCircle2
+  User
 } from 'lucide-react';
 import { UserProfile, Package, SessionRecord } from '../types';
 
@@ -18,6 +18,7 @@ interface HomeSectionProps {
   sessions: SessionRecord[];
   onNavigate: (tab: string) => void;
   onOpenBreathingPacer: () => void;
+  onOpenAuthModal: () => void;
 }
 
 export const HomeSection: React.FC<HomeSectionProps> = ({
@@ -26,8 +27,9 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
   sessions,
   onNavigate,
   onOpenBreathingPacer,
+  onOpenAuthModal,
 }) => {
-  const firstName = currentUser?.fullName.split(' ')[0] || 'Bienvenida';
+  const firstName = currentUser?.fullName?.split(' ')[0] || '';
   const activePackages = packages.filter(p => p.status === 'active');
   const totalRemainingSessions = activePackages.reduce(
     (acc, p) => acc + (p.totalSessions - p.sessionsUsed), 
@@ -52,12 +54,16 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-semibold text-[#503250] leading-tight text-balance">
               {currentUser?.role === 'admin'
-                ? `Hola, ${firstName}. Panel de Centro SERES`
-                : `Bienvenida, ${firstName}. Conecta con tu cuerpo y tu tiempo`}
+                ? `Hola, ${firstName || 'Administradora'}. Panel de Gestión SERES`
+                : currentUser
+                ? `Bienvenida, ${firstName}. Conecta con tu cuerpo y tu tiempo`
+                : 'Bienvenida a SERES · Centro de Masajes y Terapias Integrativas'}
             </h1>
 
             <p className="text-sm sm:text-base text-[#1E1E1E]/80 leading-relaxed max-w-xl">
-              Un puente entre lo vivido en tus sesiones y tu vida cotidiana. Aquí puedes consultar tus asistencias y paquetes, explorar prácticas de autocuidado corporal y registrar tus comprensiones personales en total intimidad.
+              {currentUser
+                ? 'Un puente entre lo vivido en tus sesiones y tu vida cotidiana. Aquí puedes consultar tus asistencias y paquetes, explorar prácticas de autocuidado corporal y registrar tus comprensiones personales en total intimidad.'
+                : 'Un espacio digital sereno para las personas que asisten a nuestros masajes, terapias y actividades. Explora nuestras prácticas guiadas de autocuidado o ingresa para consultar tus bonos y sesiones.'}
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -76,6 +82,16 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
                 <Sparkles className="w-4 h-4 text-[#BE6E55]" />
                 <span>Hacer una pausa (Respiración)</span>
               </button>
+
+              {!currentUser && (
+                <button
+                  onClick={onOpenAuthModal}
+                  className="px-5 py-3 rounded-2xl bg-white hover:bg-white/80 text-[#503250] text-xs sm:text-sm font-semibold transition-all border border-[#D7C8A5] flex items-center gap-2"
+                >
+                  <User className="w-4 h-4 text-[#A06446]" />
+                  <span>Ingresar a mi cuenta</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -111,64 +127,72 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
                 <Layers className="w-4 h-4 text-[#BE6E55]" />
                 Tus Sesiones Disponibles
               </span>
-              <span>{activePackages.length} bono{activePackages.length !== 1 ? 's' : ''} activo{activePackages.length !== 1 ? 's' : ''}</span>
+              <span>{currentUser ? `${activePackages.length} bono(s)` : 'Acceso privado'}</span>
             </div>
             
-            <div className="text-3xl font-display font-bold text-[#503250] tabular-nums mt-1">
-              {totalRemainingSessions} <span className="text-sm font-normal text-[#1E1E1E]/60">sesiones restantes</span>
-            </div>
-
-            <p className="text-xs text-[#1E1E1E]/70 mt-2">
-              {activePackages.length > 0 
-                ? activePackages[0].name
-                : 'No tienes paquetes activos en este momento.'}
-            </p>
+            {currentUser ? (
+              <>
+                <div className="text-3xl font-display font-bold text-[#503250] tabular-nums mt-1">
+                  {totalRemainingSessions} <span className="text-sm font-normal text-[#1E1E1E]/60">sesiones restantes</span>
+                </div>
+                <p className="text-xs text-[#1E1E1E]/70 mt-2">
+                  {activePackages.length > 0 
+                    ? activePackages[0].name
+                    : 'No tienes paquetes activos en este momento.'}
+                </p>
+              </>
+            ) : (
+              <div className="py-2">
+                <p className="text-xs text-[#1E1E1E]/75 leading-relaxed">
+                  Inicia sesión con tu correo para consultar tu saldo de sesiones y bonos adquiridos.
+                </p>
+              </div>
+            )}
           </div>
 
-          <button
-            onClick={() => onNavigate('sesiones')}
-            className="mt-4 pt-3 border-t border-[#503250]/10 text-xs font-semibold text-[#503250] hover:text-[#BE6E55] flex items-center justify-between transition-colors"
-          >
-            <span>Ver detalle y asistencias</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          {currentUser ? (
+            <button
+              onClick={() => onNavigate('sesiones')}
+              className="mt-4 pt-3 border-t border-[#503250]/10 text-xs font-semibold text-[#503250] hover:text-[#BE6E55] flex items-center justify-between transition-colors"
+            >
+              <span>Ver detalle y asistencias</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={onOpenAuthModal}
+              className="mt-4 pt-3 border-t border-[#503250]/10 text-xs font-semibold text-[#503250] hover:text-[#BE6E55] flex items-center justify-between transition-colors"
+            >
+              <span>Ingresar para ver mis bonos</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Card 2: Última sesión registrada */}
+        {/* Card 2: Espacio Personal / Última sesión */}
         <div className="p-6 bg-white/70 rounded-3xl border border-[#D7C8A5]/40 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#A06446] font-medium mb-2">
               <span className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-[#BE6E55]" />
-                Última Sesión Realizada
+                <BookOpen className="w-4 h-4 text-[#BE6E55]" />
+                Mi Espacio Personal
               </span>
-              <span>{lastSession ? 'Completada' : 'Sin registro'}</span>
+              <span>100% Confidencial</span>
             </div>
 
-            {lastSession ? (
-              <>
-                <div className="text-lg font-semibold text-[#503250] line-clamp-1">
-                  {lastSession.serviceName}
-                </div>
-                <div className="text-xs text-[#1E1E1E]/70 mt-1">
-                  Con {lastSession.therapistName} · {new Date(lastSession.sessionDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
-                </div>
-                <div className="text-[11px] text-[#A06446] mt-2 line-clamp-2">
-                  {lastSession.administrativeNotes}
-                </div>
-              </>
-            ) : (
-              <p className="text-xs text-[#1E1E1E]/60 mt-1">
-                Aún no tienes sesiones registradas en tu historial.
-              </p>
-            )}
+            <div className="text-base font-semibold text-[#503250]">
+              Diario Privado de Reflexión
+            </div>
+            <p className="text-xs text-[#1E1E1E]/70 mt-1 leading-relaxed">
+              Registra los aprendizajes de tu cuerpo tras cada sesión. Tus notas son estrictamente privadas.
+            </p>
           </div>
 
           <button
-            onClick={() => onNavigate('espacio-personal')}
+            onClick={() => currentUser ? onNavigate('espacio-personal') : onOpenAuthModal()}
             className="mt-4 pt-3 border-t border-[#503250]/10 text-xs font-semibold text-[#503250] hover:text-[#BE6E55] flex items-center justify-between transition-colors"
           >
-            <span>Integrar aprendizajes en Mi Espacio</span>
+            <span>{currentUser ? 'Abrir mi diario' : 'Ingresar a mi diario'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -220,7 +244,7 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
           
           {/* Pillar 1 */}
           <div 
-            onClick={() => onNavigate('sesiones')}
+            onClick={() => currentUser ? onNavigate('sesiones') : onOpenAuthModal()}
             className="group cursor-pointer p-6 bg-white/60 hover:bg-white rounded-3xl border border-[#D7C8A5]/40 hover:border-[#BE6E55]/40 transition-all shadow-sm hover:shadow-md flex flex-col justify-between"
           >
             <div>
@@ -235,14 +259,14 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
               </p>
             </div>
             <div className="mt-4 flex items-center gap-1 text-xs font-medium text-[#A06446]">
-              <span>Consultar bonos</span>
+              <span>{currentUser ? 'Consultar bonos' : 'Ingresar para consultar'}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
 
           {/* Pillar 2 */}
           <div 
-            onClick={() => onNavigate('espacio-personal')}
+            onClick={() => currentUser ? onNavigate('espacio-personal') : onOpenAuthModal()}
             className="group cursor-pointer p-6 bg-white/60 hover:bg-white rounded-3xl border border-[#D7C8A5]/40 hover:border-[#BE6E55]/40 transition-all shadow-sm hover:shadow-md flex flex-col justify-between"
           >
             <div>
@@ -257,7 +281,7 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
               </p>
             </div>
             <div className="mt-4 flex items-center gap-1 text-xs font-medium text-[#A06446]">
-              <span>Abrir reflexiones</span>
+              <span>{currentUser ? 'Abrir reflexiones' : 'Ingresar a reflexiones'}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -279,7 +303,7 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
               </p>
             </div>
             <div className="mt-4 flex items-center gap-1 text-xs font-medium text-[#A06446]">
-              <span>Ver biblioteca</span>
+              <span>Ver biblioteca abierta</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -328,9 +352,8 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
             </div>
           </div>
 
-          {/* Pillar 6: Futuro Programa de Referidos (Preparación arquitectónica transparente) */}
+          {/* Pillar 6 */}
           <div 
-            onClick={() => onNavigate('sesiones')}
             className="p-6 bg-white/60 rounded-3xl border border-[#D7C8A5]/40 transition-all shadow-sm flex flex-col justify-between"
           >
             <div>
