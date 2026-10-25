@@ -24,7 +24,7 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState<boolean>(false);
   
-  // Barra de simulación opcional (oculta por defecto)
+  // Barra de simulación opcional
   const [showTestingBar, setShowTestingBar] = useState<boolean>(() => {
     return localStorage.getItem('seres_show_test_bar') === 'true';
   });
@@ -208,6 +208,7 @@ export default function App() {
             packages={packages}
             sessions={sessions}
             movements={movements}
+            onOpenSupabaseGuide={() => setIsSupabaseGuideOpen(true)}
           />
         )}
       </main>

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Database, LogOut, ChevronDown, Sparkles, Share2, Check, User, Edit2 } from 'lucide-react';
+import { LogOut, ChevronDown, Sparkles, Share2, Check, User, Edit2, Settings } from 'lucide-react';
 import { UserProfile } from '../types';
 import { dataService } from '../services/dataService';
-import { isSupabaseConfigured } from '../lib/supabase';
 
 interface HeaderProps {
   currentUser: UserProfile | null;
@@ -39,13 +38,18 @@ export const Header: React.FC<HeaderProps> = ({
 
   const navLinks = [
     { id: 'inicio', label: 'Mi Experiencia' },
-    { id: 'sesiones', label: 'Sesiones y Bonos' },
     { id: 'autocuidado', label: 'Autocuidado' },
     { id: 'guia-diaria', label: 'Guía Diaria' },
-    { id: 'espacio-personal', label: 'Mi Espacio' },
     { id: 'servicios', label: 'Servicios' },
   ];
 
+  // Si está autenticado como cliente, muestra sus secciones personales
+  if (currentUser) {
+    navLinks.splice(1, 0, { id: 'sesiones', label: 'Sesiones y Bonos' });
+    navLinks.splice(2, 0, { id: 'espacio-personal', label: 'Mi Espacio' });
+  }
+
+  // Si es la administradora, agrega la pestaña de gestión
   if (currentUser?.role === 'admin') {
     navLinks.push({ id: 'admin', label: 'Gestión SERES' });
   }
@@ -69,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </button>
 
-          {/* Zone 2: 4-5 single-line clean navigation links */}
+          {/* Zone 2: Navigation links */}
           <nav className="hidden lg:flex items-center gap-7 text-sm font-medium text-[#1E1E1E]/80">
             {navLinks.map((link) => (
               <button
@@ -89,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
             ))}
           </nav>
 
-          {/* Zone 3: 1 primary action area / user controls */}
+          {/* Zone 3: Action area */}
           <div className="flex items-center gap-2.5 shrink-0">
             
             {/* Share app button */}
@@ -119,22 +123,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Sparkles className="w-3.5 h-3.5 text-[#BE6E55]" />
               <span className="whitespace-nowrap">Pausa</span>
-            </button>
-
-            {/* Guía Vercel & Supabase */}
-            <button
-              onClick={onOpenSupabaseGuide}
-              className={`p-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-all ${
-                isSupabaseConfigured
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                  : 'border-[#D7C8A5] bg-white/60 text-[#503250] hover:bg-white'
-              }`}
-              title="Guía de publicación y conexión"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span className="hidden md:inline text-[11px] whitespace-nowrap">
-                Guía de Conexión
-              </span>
             </button>
 
             {/* User profile menu */}
@@ -185,15 +173,32 @@ export const Header: React.FC<HeaderProps> = ({
                         <span>Cambiar mi nombre / Editar perfil</span>
                       </button>
 
-                      <button
-                        onClick={() => {
-                          onToggleTestingBar();
-                          setShowUserDropdown(false);
-                        }}
-                        className="w-full text-left px-3 py-1.5 rounded-xl text-[#1E1E1E]/70 hover:bg-white flex items-center gap-2 transition-colors text-xs"
-                      >
-                        <span>{showTestingBar ? '👁️ Ocultar barra de prueba' : '🔧 Mostrar barra de prueba'}</span>
-                      </button>
+                      {/* Solo para la administradora: acceso a la guía de conexión de Supabase */}
+                      {currentUser.role === 'admin' && (
+                        <button
+                          onClick={() => {
+                            onOpenSupabaseGuide();
+                            setShowUserDropdown(false);
+                          }}
+                          className="w-full text-left px-3 py-1.5 rounded-xl text-[#503250] hover:bg-white flex items-center gap-2 transition-colors text-xs"
+                        >
+                          <Settings className="w-3.5 h-3.5 text-[#A06446]" />
+                          <span>Guía técnica de Supabase & Vercel</span>
+                        </button>
+                      )}
+
+                      {/* Opción de simulación para pruebas internas de la dueña */}
+                      {currentUser.role === 'admin' && (
+                        <button
+                          onClick={() => {
+                            onToggleTestingBar();
+                            setShowUserDropdown(false);
+                          }}
+                          className="w-full text-left px-3 py-1.5 rounded-xl text-[#1E1E1E]/70 hover:bg-white flex items-center gap-2 transition-colors text-xs"
+                        >
+                          <span>{showTestingBar ? '👁️ Ocultar barra de prueba' : '🔧 Mostrar barra de prueba'}</span>
+                        </button>
+                      )}
                     </div>
 
                     <div className="pt-1.5 mt-1 border-t border-[#503250]/10">
@@ -214,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={onOpenAuthModal}
-                className="px-3.5 py-1.5 bg-[#503250] text-[#F5F0E6] text-xs font-medium rounded-xl hover:bg-[#3d263d] transition-all flex items-center gap-1.5"
+                className="px-3.5 py-1.5 bg-[#503250] text-[#F5F0E6] text-xs font-semibold rounded-xl hover:bg-[#3d263d] transition-all flex items-center gap-1.5 shadow-xs"
               >
                 <User className="w-3.5 h-3.5" />
                 <span>Ingresar</span>
@@ -227,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile Ergonomic Bottom Tab Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#F5F0E6]/95 backdrop-blur-md border-t border-[#D7C8A5]/60 pb-safe shadow-lg">
-        <div className="grid grid-cols-5 h-16 items-center px-1">
+        <div className={`grid ${currentUser ? (currentUser.role === 'admin' ? 'grid-cols-5' : 'grid-cols-5') : 'grid-cols-4'} h-16 items-center px-1`}>
           <button
             onClick={() => onTabChange('inicio')}
             className={`flex flex-col items-center justify-center py-1 transition-colors ${
@@ -236,16 +241,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <span className="text-base leading-none">🌿</span>
             <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Inicio</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('sesiones')}
-            className={`flex flex-col items-center justify-center py-1 transition-colors ${
-              activeTab === 'sesiones' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
-            }`}
-          >
-            <span className="text-base leading-none">📋</span>
-            <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Bonos</span>
           </button>
 
           <button
@@ -259,34 +254,66 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            onClick={() => onTabChange('espacio-personal')}
+            onClick={() => onTabChange('servicios')}
             className={`flex flex-col items-center justify-center py-1 transition-colors ${
-              activeTab === 'espacio-personal' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
+              activeTab === 'servicios' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
             }`}
           >
-            <span className="text-base leading-none">📖</span>
-            <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Mi Espacio</span>
+            <span className="text-base leading-none">🌸</span>
+            <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Servicios</span>
           </button>
 
-          {currentUser?.role === 'admin' ? (
-            <button
-              onClick={() => onTabChange('admin')}
-              className={`flex flex-col items-center justify-center py-1 transition-colors ${
-                activeTab === 'admin' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
-              }`}
-            >
-              <span className="text-base leading-none">⚙️</span>
-              <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Gestión</span>
-            </button>
+          {currentUser ? (
+            currentUser.role === 'admin' ? (
+              <>
+                <button
+                  onClick={() => onTabChange('sesiones')}
+                  className={`flex flex-col items-center justify-center py-1 transition-colors ${
+                    activeTab === 'sesiones' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
+                  }`}
+                >
+                  <span className="text-base leading-none">📋</span>
+                  <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Bonos</span>
+                </button>
+                <button
+                  onClick={() => onTabChange('admin')}
+                  className={`flex flex-col items-center justify-center py-1 transition-colors ${
+                    activeTab === 'admin' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
+                  }`}
+                >
+                  <span className="text-base leading-none">⚙️</span>
+                  <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Gestión</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => onTabChange('sesiones')}
+                  className={`flex flex-col items-center justify-center py-1 transition-colors ${
+                    activeTab === 'sesiones' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
+                  }`}
+                >
+                  <span className="text-base leading-none">📋</span>
+                  <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Bonos</span>
+                </button>
+                <button
+                  onClick={() => onTabChange('espacio-personal')}
+                  className={`flex flex-col items-center justify-center py-1 transition-colors ${
+                    activeTab === 'espacio-personal' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
+                  }`}
+                >
+                  <span className="text-base leading-none">📖</span>
+                  <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Mi Espacio</span>
+                </button>
+              </>
+            )
           ) : (
             <button
-              onClick={() => onTabChange('servicios')}
-              className={`flex flex-col items-center justify-center py-1 transition-colors ${
-                activeTab === 'servicios' ? 'text-[#503250] font-semibold' : 'text-[#1E1E1E]/60'
-              }`}
+              onClick={onOpenAuthModal}
+              className="flex flex-col items-center justify-center py-1 text-[#503250]"
             >
-              <span className="text-base leading-none">🌸</span>
-              <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap">Servicios</span>
+              <span className="text-base leading-none">👤</span>
+              <span className="text-[10px] tracking-tight mt-1 whitespace-nowrap font-semibold">Ingresar</span>
             </button>
           )}
         </div>
